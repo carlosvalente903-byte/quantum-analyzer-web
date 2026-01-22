@@ -2,141 +2,83 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Quantum Analyzer Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Analyzer - Speed Meter</title>
     <style>
-        body {
-            background-color: #010305;
-            color: #00f2ff;
-            font-family: 'Courier New', Courier, monospace;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
-        }
-        #header { font-size: 14px; opacity: 0.7; margin-bottom: 20px; text-align: center; }
-        #canvas { margin: 20px 0; border: 1px solid #003333; }
-        #dev-display { font-size: 60px; font-weight: bold; margin: 10px 0; }
-        #stats { font-size: 14px; color: #666; margin-bottom: 20px; }
-        #odds { font-size: 16px; margin-bottom: 15px; color: #444; }
-        #btn-reset {
-            background: #0a1a1a;
-            color: #00f2ff;
-            border: 1px solid #00f2ff;
-            padding: 15px 30px;
-            font-family: inherit;
-            font-size: 16px;
-            cursor: pointer;
-            border-radius: 5px;
-        }
-        .anomaly { color: #ff0000 !important; }
-        .anomaly-border { border-color: #ff0000 !important; }
+        body { background-color: #050505; color: #00f2ff; font-family: 'Courier New', monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        #canvas { border: 1px solid #111; margin-bottom: 20px; }
+        .value { font-size: 3rem; font-weight: bold; margin: 10px 0; }
+        .label { font-size: 0.8rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.7; }
+        .speed-meter { color: #00f2ff; font-size: 1.2rem; margin: 15px 0; padding: 10px; border: 1px solid #222; background: rgba(0, 242, 255, 0.05); }
+        .critical { color: #ff0000 !important; text-shadow: 0 0 10px #ff0000; }
+        button { background: none; border: 1px solid #00f2ff; color: #00f2ff; padding: 10px 20px; cursor: pointer; margin-top: 20px; font-family: inherit; }
     </style>
 </head>
 <body>
-
-    <div id="header">QUANTUM FIELD SENSITIVE ANALYZER<br>STATE: <span id="status">SCANNING</span></div>
-    
+    <div class="label">State: <span id="state-val">Stable Scan</span></div>
     <canvas id="canvas" width="300" height="250"></canvas>
+    <div id="display" class="value">0</div>
+    <div class="label" id="odds-label">Odds: 1 in 1</div>
     
-    <div id="dev-display">0</div>
-    <div id="odds">ODDS: 1 in 1</div>
-    <div id="stats">PEAK: 0 | ANOMALIES: 0</div>
+    <div class="speed-meter" id="speed-display">Rotation: 100%</div>
     
-    <button id="btn-reset">NEW SESSION (RESET)</button>
+    <div style="font-size: 0.9rem; color: #555;">
+        PEAK: <span id="peak-val">0</span> | ANOMALIES: <span id="anom-count">0</span>
+    </div>
+    <button onclick="resetSession()">NEW SESSION (RESET)</button>
 
     <script>
-        let desviacion = 0;
-        let iteraciones = 0;
-        let maxPeak = 0;
-        let anomalies = 0;
-        let angulo = 0;
-
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const devDisp = document.getElementById('dev-display');
-        const statsDisp = document.getElementById('stats');
-        const oddsDisp = document.getElementById('odds');
-        const statusDisp = document.getElementById('status');
-        const btnReset = document.getElementById('btn-reset');
+        let desviacion = 0, peak = 0, anomalies = 0, angulo = 0;
+        let baseSpeed = 0.05; // MANTENEMOS TU VELOCIDAD ORIGINAL
 
         function update() {
-            // Generar 40 bits por ciclo
-            for(let i=0; i<40; i++) {
-                desviacion += Math.random() < 0.5 ? -1 : 1;
-                iteraciones++;
-            }
-
-            const absDev = Math.abs(desviacion);
-            const zScore = absDev / Math.sqrt(iteraciones);
-            const umbral = 1.8;
-
-            if (absDev > maxPeak) maxPeak = absDev;
-
-            let color = "#00f2ff";
-            let vel = 0.05 + (zScore / 100);
-
-            if (zScore > umbral) {
-                color = "#ff0000";
-                anomalies++;
-                statusDisp.innerText = "CRITICAL ANOMALY";
-                statusDisp.className = "anomaly";
-                devDisp.className = "anomaly";
-                // Efecto de sonido (opcional, algunos navegadores lo bloquean sin clic previo)
-                // window.navigator.vibrate(20); 
-            } else {
-                statusDisp.innerText = "STABLE SCAN";
-                statusDisp.className = "";
-                devDisp.className = "";
-            }
-
-            // Actualizar Interfaz
-            devDisp.innerText = desviacion;
-            statsDisp.innerText = `PEAK: ${maxPeak} | ANOMALIES: ${anomalies}`;
+            let random = Math.random() < 0.5 ? -1 : 1;
+            desviacion += random;
+            if (Math.abs(desviacion) > peak) peak = Math.abs(desviacion);
             
-            // Cálculo de Probabilidad aproximada
-            let odds = Math.floor(1 / (1 - erf(zScore / Math.sqrt(2))));
-            oddsDisp.innerText = `ODDS: 1 in ${odds > 1000000 ? '1M+' : odds}`;
-            oddsDisp.style.color = color;
+            const isCritical = Math.abs(desviacion) > 1500;
+            const display = document.getElementById('display');
+            
+            if (isCritical) {
+                display.classList.add('critical');
+                document.getElementById('state-val').innerText = "CRITICAL ANOMALY";
+                anomalies++;
+            } else {
+                display.classList.remove('critical');
+                document.getElementById('state-val').innerText = "Stable Scan";
+            }
 
-            draw(color, vel);
+            display.innerText = desviacion;
+            document.getElementById('peak-val').innerText = peak;
+            document.getElementById('anom-count').innerText = anomalies;
+            
+            // EL MEDIDOR DE VELOCIDAD EN TIEMPO REAL
+            let currentSpeedPerc = (baseSpeed / 0.05) * 100;
+            document.getElementById('speed-display').innerText = `Rotation: ${currentSpeedPerc.toFixed(1)}%`;
+
+            let odds = Math.floor(Math.abs(desviacion) / 40) + 1;
+            document.getElementById('odds-label').innerText = `Odds: 1 in ${odds}`;
+
+            draw();
             requestAnimationFrame(update);
         }
 
-        function draw(color, vel) {
+        function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            angulo += vel;
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 2;
-
-            const sizes = [80, 55, 30];
-            sizes.forEach((r, i) => {
+            angulo += baseSpeed;
+            ctx.strokeStyle = Math.abs(desviacion) > 1500 ? '#ff0000' : '#00f2ff';
+            [80, 55, 30].forEach((r, i) => {
                 ctx.save();
                 ctx.translate(150, 125);
                 ctx.rotate(i % 2 === 0 ? angulo : -angulo);
-                ctx.strokeRect(-r, -r, r*2, r*2);
+                ctx.strokeRect(-r, -r, r * 2, r * 2);
                 ctx.restore();
             });
         }
 
-        // Función de error matemática para las ODDS
-        function erf(x) {
-            const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
-            const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
-            const sign = (x < 0) ? -1 : 1;
-            x = Math.abs(x);
-            const t = 1.0 / (1.0 + p * x);
-            const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
-            return sign * y;
-        }
-
-        btnReset.onclick = () => {
-            desviacion = 0; iteraciones = 0; maxPeak = 0; anomalies = 0;
-        };
-
+        function resetSession() { desviacion = 0; peak = 0; anomalies = 0; }
         update();
     </script>
 </body>
